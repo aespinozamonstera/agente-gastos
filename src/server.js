@@ -11,7 +11,9 @@ const { saveExpenseToExcel } = require("./excelManager");
 
 const app = express();
 app.use(express.json());
-
+app.get("/", (req, res) => {
+  res.status(200).send("Agente de Gastos activo ✅");
+});
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_API = `https://api.telegram.org/bot${TELEGRAM_TOKEN}`;
