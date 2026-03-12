@@ -7,7 +7,7 @@ require("dotenv").config();
 const express = require("express");
 const axios = require("axios");
 const Anthropic = require("@anthropic-ai/sdk");
-const { saveExpenseToExcel } = require("./excelManager");
+const { saveExpenseToExcel } = require("./sheetsManager");
 
 const app = express();
 app.use(express.json());
