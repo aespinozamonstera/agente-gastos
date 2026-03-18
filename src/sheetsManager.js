@@ -20,7 +20,9 @@ const CATEGORY_COLORS = {
 
 // ─── Autenticación con Google ────────────────────────────────
 function getAuth() {
-  const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS.replace(/\\n/g, '\n'));
+  let credStr = process.env.GOOGLE_CREDENTIALS;
+  credStr = credStr.replace(/\\n/g, '\n').replace(/`/g, '');
+  const credentials = JSON.parse(credStr);
   return new google.auth.GoogleAuth({
     credentials,
     scopes: [
