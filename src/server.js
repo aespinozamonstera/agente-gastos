@@ -124,7 +124,9 @@ async function analyzeReceiptWithClaude(imageBase64, project, sentBy) {
     }],
   });
 
-  const parsed = JSON.parse(response.content[0].text.trim());
+  let rawText = response.content[0].text.trim();
+rawText = rawText.replace(/^```json\n?/, '').replace(/^```\n?/, '').replace(/\n?```$/, '');
+const parsed = JSON.parse(rawText);
   return {
     ...parsed,
     project,
