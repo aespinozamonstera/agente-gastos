@@ -245,133 +245,78 @@ async function updateDashboard(sheets) {
     await sheets.spreadsheets.batchUpdate({
       spreadsheetId: SPREADSHEET_ID,
       requestBody: {
-        requests: [{
-          addSheet: {
-            properties: {
-              title: sheetName,
-              index: 0,
-              tabColor: { red: 0.13, green: 0.29, blue: 0.53 },
-            },
-          },
-        }],
+        requests: [{ addSheet: { properties: { title: sheetName, index: 0 } } }],
       },
     });
   }
 
-  // Limpiar hoja
+  // Leer todos los gastos
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: "Todos los Gastos!A2:I1000",
+  });
+
+  const rows = response.data.values || [];
+
+  // Calcular totales por proyecto
+  const porProyecto = {};
+  const porCategoria = {};
+  const porMes = {};
+  let totalGasolina = 0;
+
+  rows.forEach(row => {
+    const fecha = row[1] || "";
+    const proyecto = row[2] || "Sin Proyecto";
+    const categoria = row[4] || "Otro";
+    const total = parseFloat(row[5]) || 0;
+    const mes = fecha.substring(0, 7); // YYYY-MM
+
+    porProyecto[proyecto] = (porProyecto[proyecto] || 0) + total;
+    porCategoria[categoria] = (porCategoria[categoria] || 0) + total;
+    if (mes) porMes[mes] = (porMes[mes] || 0) + total;
+    if (categoria === "Transporte") totalGasolina += total;
+  });
+
+  // Construir datos del dashboard
+  const dashData = [
+    ["📊 DASHBOARD DE GASTOS - MONSTERA ESTUDIO"],
+    [`Actualizado: ${new Date().toLocaleString("es-MX")}`],
+    [""],
+    ["📁 TOTAL POR PROYECTO", "", "🏷️ POR CATEGORÍA", "", "📅 POR MES"],
+    ["Proyecto", "Total MXN", "Categoría", "Total MXN", "Mes", "Total MXN"],
+  ];
+
+  const proyectos = Object.entries(porProyecto).sort((a, b) => b[1] - a[1]);
+  const categorias = Object.entries(porCategoria).sort((a, b) => b[1] - a[1]);
+  const meses = Object.entries(porMes).sort((a, b) => a[0].localeCompare(b[0]));
+
+  const maxRows = Math.max(proyectos.length, categorias.length, meses.length);
+
+  for (let i = 0; i < maxRows; i++) {
+    dashData.push([
+      proyectos[i] ? proyectos[i][0] : "",
+      proyectos[i] ? proyectos[i][1].toFixed(2) : "",
+      categorias[i] ? categorias[i][0] : "",
+      categorias[i] ? categorias[i][1].toFixed(2) : "",
+      meses[i] ? meses[i][0] : "",
+      meses[i] ? meses[i][1].toFixed(2) : "",
+    ]);
+  }
+
+  dashData.push([""]);
+  dashData.push(["⛽ TOTAL GASOLINA/TRANSPORTE", totalGasolina.toFixed(2)]);
+
+  // Limpiar y escribir
   await sheets.spreadsheets.values.clear({
     spreadsheetId: SPREADSHEET_ID,
     range: `${sheetName}!A1:Z100`,
   });
 
-  // Título
   await sheets.spreadsheets.values.update({
     spreadsheetId: SPREADSHEET_ID,
     range: `${sheetName}!A1`,
-    valueInputOption: "USER_ENTERED",
-    requestBody: { values: [["📊 DASHBOARD DE GASTOS - MONSTERA ESTUDIO"]] },
-  });
-
-  await sheets.spreadsheets.values.update({
-    spreadsheetId: SPREADSHEET_ID,
-    range: `${sheetName}!A2`,
-    valueInputOption: "USER_ENTERED",
-    requestBody: { values: [[`Actualizado: ${new Date().toLocaleString("es-MX")}`]] },
-  });
-
-  // Sección 1: Total por Proyecto
-  await sheets.spreadsheets.values.update({
-    spreadsheetId: SPREADSHEET_ID,
-    range: `${sheetName}!A4`,
-    valueInputOption: "USER_ENTERED",
-    requestBody: {
-      values: [
-        ["📁 TOTAL POR PROYECTO"],
-        ["Proyecto", "Total (MXN)", "# Gastos"],
-        [
-          { formula: `=IFERROR(UNIQUE(FILTER('Todos los Gastos'!C2:C, 'Todos los Gastos'!C2:C<>"")), "Sin datos")` },
-          "",
-          "",
-        ],
-      ],
-    },
-  });
-
-  // Fórmulas por proyecto
-  for (let i = 0; i < 10; i++) {
-    const row = 7 + i;
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `${sheetName}!B${row}`,
-      valueInputOption: "USER_ENTERED",
-      requestBody: {
-        values: [[
-          { formula: `=IFERROR(SUMIF('Todos los Gastos'!C:C,A${row},'Todos los Gastos'!F:F),0)` },
-          { formula: `=IFERROR(COUNTIF('Todos los Gastos'!C:C,A${row}),0)` },
-        ]],
-      },
-    });
-  }
-
-  // Sección 2: Por Categoría
-  await sheets.spreadsheets.values.update({
-    spreadsheetId: SPREADSHEET_ID,
-    range: `${sheetName}!E4`,
-    valueInputOption: "USER_ENTERED",
-    requestBody: {
-      values: [
-        ["🏷️ GASTOS POR CATEGORÍA"],
-        ["Categoría", "Total (MXN)", "# Gastos"],
-        ["Comida", { formula: `=SUMIF('Todos los Gastos'!E:E,"Comida",'Todos los Gastos'!F:F)` }, { formula: `=COUNTIF('Todos los Gastos'!E:E,"Comida")` }],
-        ["Transporte", { formula: `=SUMIF('Todos los Gastos'!E:E,"Transporte",'Todos los Gastos'!F:F)` }, { formula: `=COUNTIF('Todos los Gastos'!E:E,"Transporte")` }],
-        ["Hospedaje", { formula: `=SUMIF('Todos los Gastos'!E:E,"Hospedaje",'Todos los Gastos'!F:F)` }, { formula: `=COUNTIF('Todos los Gastos'!E:E,"Hospedaje")` }],
-        ["Material", { formula: `=SUMIF('Todos los Gastos'!E:E,"Material",'Todos los Gastos'!F:F)` }, { formula: `=COUNTIF('Todos los Gastos'!E:E,"Material")` }],
-        ["Servicios", { formula: `=SUMIF('Todos los Gastos'!E:E,"Servicios",'Todos los Gastos'!F:F)` }, { formula: `=COUNTIF('Todos los Gastos'!E:E,"Servicios")` }],
-        ["Software", { formula: `=SUMIF('Todos los Gastos'!E:E,"Software",'Todos los Gastos'!F:F)` }, { formula: `=COUNTIF('Todos los Gastos'!E:E,"Software")` }],
-        ["Marketing", { formula: `=SUMIF('Todos los Gastos'!E:E,"Marketing",'Todos los Gastos'!F:F)` }, { formula: `=COUNTIF('Todos los Gastos'!E:E,"Marketing")` }],
-        ["Otro", { formula: `=SUMIF('Todos los Gastos'!E:E,"Otro",'Todos los Gastos'!F:F)` }, { formula: `=COUNTIF('Todos los Gastos'!E:E,"Otro")` }],
-        ["TOTAL", { formula: `=SUM(F6:F13)` }, { formula: `=SUM(G6:G13)` }],
-      ],
-    },
-  });
-
-  // Sección 3: Por Mes
-  await sheets.spreadsheets.values.update({
-    spreadsheetId: SPREADSHEET_ID,
-    range: `${sheetName}!A20`,
-    valueInputOption: "USER_ENTERED",
-    requestBody: {
-      values: [
-        ["📅 GASTOS POR MES"],
-        ["Mes", "Total (MXN)", "# Gastos"],
-        ["Enero", { formula: `=SUMPRODUCT(('Todos los Gastos'!F2:F1000)*( MONTH(DATEVALUE('Todos los Gastos'!B2:B1000))=1))` }, ""],
-        ["Febrero", { formula: `=SUMPRODUCT(('Todos los Gastos'!F2:F1000)*( MONTH(DATEVALUE('Todos los Gastos'!B2:B1000))=2))` }, ""],
-        ["Marzo", { formula: `=SUMPRODUCT(('Todos los Gastos'!F2:F1000)*( MONTH(DATEVALUE('Todos los Gastos'!B2:B1000))=3))` }, ""],
-        ["Abril", { formula: `=SUMPRODUCT(('Todos los Gastos'!F2:F1000)*( MONTH(DATEVALUE('Todos los Gastos'!B2:B1000))=4))` }, ""],
-        ["Mayo", { formula: `=SUMPRODUCT(('Todos los Gastos'!F2:F1000)*( MONTH(DATEVALUE('Todos los Gastos'!B2:B1000))=5))` }, ""],
-        ["Junio", { formula: `=SUMPRODUCT(('Todos los Gastos'!F2:F1000)*( MONTH(DATEVALUE('Todos los Gastos'!B2:B1000))=6))` }, ""],
-        ["Julio", { formula: `=SUMPRODUCT(('Todos los Gastos'!F2:F1000)*( MONTH(DATEVALUE('Todos los Gastos'!B2:B1000))=7))` }, ""],
-        ["Agosto", { formula: `=SUMPRODUCT(('Todos los Gastos'!F2:F1000)*( MONTH(DATEVALUE('Todos los Gastos'!B2:B1000))=8))` }, ""],
-        ["Septiembre", { formula: `=SUMPRODUCT(('Todos los Gastos'!F2:F1000)*( MONTH(DATEVALUE('Todos los Gastos'!B2:B1000))=9))` }, ""],
-        ["Octubre", { formula: `=SUMPRODUCT(('Todos los Gastos'!F2:F1000)*( MONTH(DATEVALUE('Todos los Gastos'!B2:B1000))=10))` }, ""],
-        ["Noviembre", { formula: `=SUMPRODUCT(('Todos los Gastos'!F2:F1000)*( MONTH(DATEVALUE('Todos los Gastos'!B2:B1000))=11))` }, ""],
-        ["Diciembre", { formula: `=SUMPRODUCT(('Todos los Gastos'!F2:F1000)*( MONTH(DATEVALUE('Todos los Gastos'!B2:B1000))=12))` }, ""],
-      ],
-    },
-  });
-
-  // Sección 4: Gasolinas
-  await sheets.spreadsheets.values.update({
-    spreadsheetId: SPREADSHEET_ID,
-    range: `${sheetName}!E20`,
-    valueInputOption: "USER_ENTERED",
-    requestBody: {
-      values: [
-        ["⛽ GASTOS DE GASOLINA"],
-        ["Proyecto", "Total Gasolina"],
-        ["TOTAL", { formula: `=SUMIF('Todos los Gastos'!E:E,"Transporte",'Todos los Gastos'!F:F)` }],
-      ],
-    },
+    valueInputOption: "RAW",
+    requestBody: { values: dashData },
   });
 
   console.log("📊 Dashboard actualizado");
