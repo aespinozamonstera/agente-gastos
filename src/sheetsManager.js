@@ -21,7 +21,10 @@ const CATEGORY_COLORS = {
 // ─── Autenticación con Google ────────────────────────────────
 function getAuth() {
   const b64 = process.env.GOOGLE_CREDENTIALS_B64;
-  const credentials = JSON.parse(Buffer.from(b64, 'base64').toString('utf8'));
+  console.log('B64 primeros 20:', b64 ? b64.substring(0, 20) : 'VACIO');
+  const decoded = Buffer.from(b64, 'base64').toString('utf8');
+  console.log('JSON primeros 20:', decoded.substring(0, 20));
+  const credentials = JSON.parse(decoded);
   return new google.auth.GoogleAuth({
     credentials,
     scopes: [
