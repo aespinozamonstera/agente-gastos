@@ -72,7 +72,7 @@ app.post("/webhook", async (req, res) => {
 else if (message.text && message.text.toLowerCase().startsWith('gasto:')) {
   try {
     const parts = message.text.replace(/^gasto:/i, '').split('|').map(p => p.trim());
-    const categoria = parts[0] || 'Otro';
+    const categoria = parts[0] ? parts[0].trim().charAt(0).toUpperCase() + parts[0].trim().slice(1).toLowerCase() : 'Otro';
     const total = parseFloat((parts[1] || '0').replace(/[$,]/g, ''));
     const vendor = parts[2] || 'Sin proveedor';
     const project = parts[3] || 'Sin Proyecto';
