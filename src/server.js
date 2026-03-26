@@ -113,7 +113,8 @@ else if (message.text) {
     `Ejemplo:\n` +
     `\`gasto: Comida | $350 | El Taco | Costa Faro\``
   );
-} catch (error) {
+}
+  } catch (error) {
     console.error('❌ Error en webhook:', error);
   }
 });
