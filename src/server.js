@@ -113,8 +113,10 @@ else if (message.text) {
     `Ejemplo:\n` +
     `\`gasto: Comida | $350 | El Taco | Costa Faro\``
   );
-}
-}
+} catch (error) {
+    console.error('❌ Error en webhook:', error);
+  }
+});
 // ─── Descargar imagen desde Telegram ────────────────────────
 async function downloadTelegramImage(fileId) {
   const fileResponse = await axios.get(`${TELEGRAM_API}/getFile?file_id=${fileId}`);
