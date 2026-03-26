@@ -114,7 +114,7 @@ else if (message.text) {
     `\`gasto: Comida | $350 | El Taco | Costa Faro\``
   );
 }
-
+}
 // ─── Descargar imagen desde Telegram ────────────────────────
 async function downloadTelegramImage(fileId) {
   const fileResponse = await axios.get(`${TELEGRAM_API}/getFile?file_id=${fileId}`);
