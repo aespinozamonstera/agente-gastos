@@ -68,18 +68,52 @@ app.post("/webhook", async (req, res) => {
     }
 
     // ── Cualquier otro texto ──────────────────────────────────
-    else if (message.text) {
-      await sendMessage(chatId,
-        `📸 Para registrar un gasto, *envíame una foto del ticket*.\n\n` +
-        `Agrega el proyecto en el pie de foto:\n` +
-        `_Ej: Proyecto: ACME Corp_`
-      );
-    }
+    // ── Registro manual de gasto ─────────────────────────────
+else if (message.text && message.text.toLowerCase().startsWith('gasto:')) {
+  try {
+    const parts = message.text.replace(/^gasto:/i, '').split('|').map(p => p.trim());
+    const categoria = parts[0] || 'Otro';
+    const total = parseFloat((parts[1] || '0').replace(/[$,]/g, ''));
+    const vendor = parts[2] || 'Sin proveedor';
+    const project = parts[3] || 'Sin Proyecto';
+
+    await sendMessage(chatId, `⏳ Registrando gasto manual para *${project}*...`);
+
+    const expenseData = {
+      vendor,
+      date: new Date().toISOString().split('T')[0],
+      total,
+      currency: 'MXN',
+      category: categoria,
+      items: [vendor],
+      tax: 0,
+      subtotal: total,
+      paymentMethod: 'efectivo',
+      notes: 'Registro manual sin foto',
+      project,
+      sentBy: firstName,
+      registeredAt: new Date().toISOString(),
+      id: `EXP-${Date.now()}`,
+    };
+
+    await saveExpenseToExcel(expenseData);
+    await sendMessage(chatId, formatConfirmationMessage(expenseData));
 
   } catch (error) {
-    console.error("❌ Error procesando mensaje:", error.message);
+    await sendMessage(chatId, `❌ Formato incorrecto. Usa:\n\`gasto: Categoría | $Monto | Proveedor | Proyecto\`\n\nEjemplo:\n\`gasto: Comida | $350 | Restaurante El Taco | Costa Faro\``);
   }
-});
+}
+
+// ── Cualquier otro texto ──────────────────────────────────
+else if (message.text) {
+  await sendMessage(chatId,
+    `📸 Para registrar un gasto envíame una *foto del ticket*.\n\n` +
+    `Sin foto puedes escribir:\n` +
+    `\`gasto: Categoría | $Monto | Proveedor | Proyecto\`\n\n` +
+    `Ejemplo:\n` +
+    `\`gasto: Comida | $350 | El Taco | Costa Faro\``
+  );
+}
 
 // ─── Descargar imagen desde Telegram ────────────────────────
 async function downloadTelegramImage(fileId) {
