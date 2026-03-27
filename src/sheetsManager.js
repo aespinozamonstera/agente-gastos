@@ -44,7 +44,7 @@ async function saveExpenseToExcel(expenseData) {
 
   // 2. Guardar en hoja "Todos los Gastos"
   await saveToAllExpensesSheet(sheets, expenseData);
-await updateDashboard(sheets);
+
   console.log(`💾 Guardado en Google Sheets: ${expenseData.vendor}`);
 }
 
